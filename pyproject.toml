@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "test"
+version = "0.1.0"
+description = ""
+authors = ["yeha98555 <yeha98555@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+pandas = "^2.2.2"
+prophet = "^1.1.5"
+scikit-learn = "^1.5.0"
+
+
+[tool.poetry.group.dev.dependencies]
+jupyterlab = "^4.2.2"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
