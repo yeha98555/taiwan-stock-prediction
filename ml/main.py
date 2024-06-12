@@ -2,6 +2,7 @@ import os
 from datetime import datetime
 
 import torch
+from model import LSTMModel, Model
 from preprocessing import (
     DataProcessor,
     FeatureExtractor,
@@ -10,7 +11,11 @@ from preprocessing import (
 )
 from utils import Plotter
 
-from model import LSTMModel, Model
+look_back = 90
+model_name = "single"
+model_folder = "./model"
+is_retrain = True
+num_epochs = 1000
 
 
 class ProcessorFactory:
@@ -47,16 +52,11 @@ class ModelFactory:
 
 
 def setup() -> None:
-    if not os.path.exists("./model"):
-        os.makedirs("./model")
+    if not os.path.exists(model_folder):
+        os.makedirs(model_folder)
 
 
 if __name__ == "__main__":
-    look_back = 90
-    model_name = "single"
-    is_retrain = True
-    num_epochs = 1000
-
     setup()
 
     # Read data
@@ -93,7 +93,7 @@ if __name__ == "__main__":
         output_dim=y_train.shape[1],
     )
 
-    if is_retrain or not len(os.listdir("./model")):
+    if is_retrain or not len(os.listdir(model_folder)):
         # Train model
         hist = model.train_model(X_train, y_train, num_epochs=num_epochs)
 
@@ -102,11 +102,12 @@ if __name__ == "__main__":
 
         # Save model
         torch.save(
-            model, f"./model/{model_name}_{datetime.now().strftime('%Y-%m-%d')}.pth"
+            model,
+            f"{model_folder}/{model_name}_{datetime.now().strftime('%Y-%m-%d')}.pth",
         )
     else:
         model = torch.load(
-            f"./model/{model_name}_{datetime.now().strftime('%Y-%m-%d')}.pth"
+            f"{model_folder}/{model_name}_{datetime.now().strftime('%Y-%m-%d')}.pth"
         )
 
     # Calculate RMSE
