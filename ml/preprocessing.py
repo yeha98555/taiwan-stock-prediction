@@ -20,7 +20,7 @@ class DataProcessor:
         raise NotImplementedError
 
 
-class JSONDataProcessor(DataProcessor):
+class SRCDataProcessor(DataProcessor):
     def read_data(self, file_path: str) -> Dict[str, pd.DataFrame]:
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"File {file_path} not found")

@@ -6,7 +6,7 @@ from model import LSTMModel, Model
 from preprocessing import (
     DataProcessor,
     FeatureExtractor,
-    JSONDataProcessor,
+    SRCDataProcessor,
     TechnicalIndicatorExtractor,
 )
 from utils import Plotter
@@ -21,8 +21,8 @@ num_epochs = 1000
 class ProcessorFactory:
     @staticmethod
     def get_processor(processor_type: str) -> DataProcessor:
-        if processor_type == "json":
-            return JSONDataProcessor()
+        if processor_type == "src":  # Use original data for development
+            return SRCDataProcessor()
         else:
             raise ValueError(f"Unknown processor type: {processor_type}")
 
@@ -60,7 +60,7 @@ if __name__ == "__main__":
     setup()
 
     # Read data
-    data_processor = ProcessorFactory.get_processor("json")
+    data_processor = ProcessorFactory.get_processor("src")
     merged_dict = data_processor.read_data("../data/output_clean_date_technical.json")
     print(merged_dict.keys())
 
