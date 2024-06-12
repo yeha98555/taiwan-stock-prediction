@@ -25,6 +25,9 @@ class Plotter:
     ) -> None:
         data_scaled = scaler.inverse_transform(data)
 
+        # Get first column (close) of data_scaled
+        data_scaled = data_scaled[:, 0]
+
         plt.figure(figsize=(16, 8))
         plt.title("LSTM Model")
         plt.xlabel("Date")

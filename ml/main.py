@@ -72,7 +72,9 @@ if __name__ == "__main__":
     historical_df = feature_extractor.extract_features(historical_df)
 
     # Feature scaling
-    data, scaler = data_processor.preprocess_data(historical_df)
+    data, scaler = data_processor.preprocess_data(
+        historical_df, select_cols=["close", "volume"]
+    )
 
     # Split data
     X_train, y_train, X_test, y_test = data_processor.split_data(

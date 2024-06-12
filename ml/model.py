@@ -66,31 +66,28 @@ class LSTMModel(nn.Module, Model):
         train_predict = self.forward(X_train).detach().numpy()
         test_predict = self.forward(X_test).detach().numpy()
 
-        # print("train_predict", train_predict.shape)
-        # print("test_predict", test_predict.shape)
-        # print("y_train_scaled", y_train_scaled.shape)
-        # print("y_test_scaled", y_test_scaled.shape)
+        # Reverse normalization for predictions
+        train_predict = scaler.inverse_transform(
+            np.concatenate(
+                (train_predict, np.zeros((train_predict.shape[0], 1))), axis=1
+            )
+        )[:, 0]
+        test_predict = scaler.inverse_transform(
+            np.concatenate((test_predict, np.zeros((test_predict.shape[0], 1))), axis=1)
+        )[:, 0]
 
-        # Reverse normalization
-        train_predict = scaler.inverse_transform(train_predict)
-        test_predict = scaler.inverse_transform(test_predict)
+        # Reverse normalization for true values
+        y_train = scaler.inverse_transform(
+            np.concatenate((y_train, np.zeros((y_train.shape[0], 1))), axis=1)
+        )[:, 0]
+        y_test = scaler.inverse_transform(
+            np.concatenate((y_test, np.zeros((y_test.shape[0], 1))), axis=1)
+        )[:, 0]
 
         # Compute RMSE
-        train_rmse = np.sqrt(
-            np.mean(
-                (
-                    (train_predict - scaler.inverse_transform(y_train.reshape(-1, 1)))
-                    ** 2
-                )
-            )
-        )
-        test_rmse = np.sqrt(
-            np.mean(
-                ((test_predict - scaler.inverse_transform(y_test.reshape(-1, 1))) ** 2)
-            )
-        )
+        train_rmse = np.sqrt(np.mean((train_predict - y_train) ** 2))
+        test_rmse = np.sqrt(np.mean((test_predict - y_test) ** 2))
 
         print(f"Train RMSE: {train_rmse}")
         print(f"Test RMSE: {test_rmse}")
-
         return train_predict, test_predict
