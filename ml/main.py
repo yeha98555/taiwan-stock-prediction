@@ -2,8 +2,6 @@ import os
 from datetime import datetime
 
 import torch
-
-from model import LSTMModel, Model
 from preprocessing import (
     DataProcessor,
     FeatureExtractor,
@@ -11,6 +9,8 @@ from preprocessing import (
     TechnicalIndicatorExtractor,
 )
 from utils import Plotter
+
+from model import LSTMModel, Model
 
 
 class ProcessorFactory:
@@ -61,7 +61,7 @@ if __name__ == "__main__":
 
     # Read data
     data_processor = ProcessorFactory.get_processor("json")
-    merged_dict = data_processor.read_data("./data/output_clean_date_technical.json")
+    merged_dict = data_processor.read_data("../data/output_clean_date_technical.json")
     print(merged_dict.keys())
 
     # Get stock historical price
