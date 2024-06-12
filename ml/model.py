@@ -66,23 +66,27 @@ class LSTMModel(nn.Module, Model):
         train_predict = self.forward(X_train).detach().numpy()
         test_predict = self.forward(X_test).detach().numpy()
 
+        concat_dim = X_train.shape[2] - 1
+
         # Reverse normalization for predictions
-        train_predict = scaler.inverse_transform(
-            np.concatenate(
-                (train_predict, np.zeros((train_predict.shape[0], 1))), axis=1
-            )
-        )[:, 0]
-        test_predict = scaler.inverse_transform(
-            np.concatenate((test_predict, np.zeros((test_predict.shape[0], 1))), axis=1)
-        )[:, 0]
+        train_predict_full = np.concatenate(
+            (train_predict, np.zeros((train_predict.shape[0], concat_dim))), axis=1
+        )
+        test_predict_full = np.concatenate(
+            (test_predict, np.zeros((test_predict.shape[0], concat_dim))), axis=1
+        )
+        train_predict = scaler.inverse_transform(train_predict_full)[:, 0]
+        test_predict = scaler.inverse_transform(test_predict_full)[:, 0]
 
         # Reverse normalization for true values
-        y_train = scaler.inverse_transform(
-            np.concatenate((y_train, np.zeros((y_train.shape[0], 1))), axis=1)
-        )[:, 0]
-        y_test = scaler.inverse_transform(
-            np.concatenate((y_test, np.zeros((y_test.shape[0], 1))), axis=1)
-        )[:, 0]
+        y_train_full = np.concatenate(
+            (y_train, np.zeros((y_train.shape[0], concat_dim))), axis=1
+        )
+        y_test_full = np.concatenate(
+            (y_test, np.zeros((y_test.shape[0], concat_dim))), axis=1
+        )
+        y_train = scaler.inverse_transform(y_train_full)[:, 0]
+        y_test = scaler.inverse_transform(y_test_full)[:, 0]
 
         # Compute RMSE
         train_rmse = np.sqrt(np.mean((train_predict - y_train) ** 2))
