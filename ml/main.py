@@ -73,7 +73,17 @@ if __name__ == "__main__":
 
     # Feature scaling
     data, scaler = data_processor.preprocess_data(
-        historical_df, select_cols=["close", "volume"]
+        historical_df,
+        select_cols=[
+            "close",
+            "volume",
+            "open",
+            "high",
+            "low",
+            "adjClose",  # 考慮分紅或拆股，調整後的，對於長期預測有價值
+            "change",  # 反應市場的波動性，識別短期趨勢
+            "changeOverTime",  # 隨時間價格變化，識別長期趨勢和週期性的變化
+        ],
     )
 
     # Split data
