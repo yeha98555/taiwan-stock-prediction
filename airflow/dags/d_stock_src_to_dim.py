@@ -13,7 +13,7 @@ from airflow.utils.dates import days_ago
 RAW_BUCKET = os.environ.get("RAW_BUCKET")
 PROCESSED_BUCKET = os.environ.get("PROCESSED_BUCKET")
 DATASET_PREFIX = os.environ.get("DATASET_PREFIX")
-DATA_DIR = "/opt/airflow"
+DATA_DIR = "/opt/airflow/data"
 GCS_CLIENT = storage.Client()
 BQ_CLIENT = bigquery.Client()
 
