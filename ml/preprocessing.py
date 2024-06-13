@@ -37,10 +37,16 @@ class DataProcessor:
 
         test_set_size = int(np.round(split_ratio * data.shape[0]))
         train_set_size = data.shape[0] - test_set_size
+
         X_train = data[:train_set_size, :-1, :]
-        y_train = data[:train_set_size, -1, 0].reshape(-1, 1)
         X_test = data[train_set_size:, :-1, :]
-        y_test = data[train_set_size:, -1, 0].reshape(-1, 1)
+
+        y_train = (
+            data[:train_set_size, -1, 0] / data[:train_set_size, 0, 0] - 1
+        ) >= 0.1
+        y_test = (data[train_set_size:, -1, 0] / data[train_set_size:, 0, 0] - 1) >= 0.1
+        y_train = y_train.astype(int).reshape(-1, 1)
+        y_test = y_test.astype(int).reshape(-1, 1)
         return [X_train, y_train, X_test, y_test]
 
 

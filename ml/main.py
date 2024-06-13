@@ -159,9 +159,3 @@ if __name__ == "__main__":
         y_test,
         scaler,
     )
-
-    # Plot trends
-    train_data_len = len(X_train_daily)
-    Plotter.plot_trends(
-        daily_data, scaler, train_predict, test_predict, train_data_len, look_back
-    )
