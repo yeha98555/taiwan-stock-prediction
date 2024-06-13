@@ -17,7 +17,7 @@ model_name = "single"
 model_folder = "./model"
 is_retrain = True
 num_epochs = 1000
-is_add_financial = True
+is_add_techindex = True
 
 
 class ProcessorFactory:
@@ -67,40 +67,39 @@ if __name__ == "__main__":
     print(merged_dict.keys())
 
     # Get selected df
-    historical_df = merged_dict["historicalPriceFull"]
-    if is_add_financial:
-        financial_df = merged_dict["tech60"]
+    stockprice_df = merged_dict["historicalPriceFull"]
+    if is_add_techindex:
+        techindex_df = merged_dict["tech60"]
 
-        historical_df["date"] = pd.to_datetime(historical_df["date"])
-        financial_df["date"] = pd.to_datetime(financial_df["date"])
+        stockprice_df["date"] = pd.to_datetime(stockprice_df["date"])
+        techindex_df["date"] = pd.to_datetime(techindex_df["date"])
 
-        historical_df = historical_df.merge(
-            financial_df,
+        stockprice_df = stockprice_df.merge(
+            techindex_df,
             on="date",
             how="left",
             suffixes=("", "_tech60"),
         )
-        print(historical_df.tail())
 
     # Feature extraction
     feature_extractor = FeatureExtractorFactory.get_extractor("technical")
-    historical_df = feature_extractor.extract_features(historical_df)
+    stockprice_df = feature_extractor.extract_features(stockprice_df)
 
     # Feature scaling
     select_cols = [
-        "close",
-        "volume",
         "open",
         "high",
         "low",
-        "adjClose",  # 考慮分紅或拆股，調整後的，對於長期預測有價值
-        "changeOverTime",  # 隨時間價格變化，識別長期趨勢和週期性的變化
+        "close",
+        "volume",
+        "vwap",
     ]
-    if is_add_financial:
+    if is_add_techindex:
         select_cols.extend(
             [
                 "close_tech60",
                 "volume_tech60",
+                "sma",
                 "wma",
                 "rsi",
                 "adx",
@@ -108,7 +107,7 @@ if __name__ == "__main__":
             ]
         )
     data, scaler = data_processor.preprocess_data(
-        historical_df,
+        stockprice_df,
         select_cols=select_cols,
     )
 
