@@ -11,39 +11,6 @@ class DataProcessor:
     def read_data(self, file_path: str) -> Dict[str, pd.DataFrame]:
         raise NotImplementedError
 
-    def preprocess_data(self, df: pd.DataFrame) -> Tuple[pd.DataFrame, MinMaxScaler]:
-        raise NotImplementedError
-
-    def split_data(
-        self, stock: pd.DataFrame, look_back: int, split_ratio: float
-    ) -> List[np.array]:
-        raise NotImplementedError
-
-
-class SRCDataProcessor(DataProcessor):
-    def read_data(self, file_path: str) -> Dict[str, pd.DataFrame]:
-        if not os.path.exists(file_path):
-            raise FileNotFoundError(f"File {file_path} not found")
-
-        with open(file_path, "r") as file:
-            data = json.load(file)
-
-        merged_dict = {}
-        for item in data:
-            if item == "historicalPriceFull":
-                symbol = ""
-                for entry in data[item]:
-                    if "symbol" in entry:
-                        symbol = data[item][entry]
-                    else:
-                        df = pd.json_normalize(data[item][entry])
-                        df["symbol"] = symbol
-            else:
-                df = pd.json_normalize(data[item])
-            merged_dict[item] = df
-
-        return merged_dict
-
     def preprocess_data(
         self, df: pd.DataFrame, select_cols: list = ["close"]
     ) -> Tuple[pd.DataFrame, MinMaxScaler]:
@@ -74,6 +41,31 @@ class SRCDataProcessor(DataProcessor):
         X_test = data[train_set_size:, :-1, :]
         y_test = data[train_set_size:, -1, 0].reshape(-1, 1)
         return [X_train, y_train, X_test, y_test]
+
+
+class SRCDataProcessor(DataProcessor):
+    def read_data(self, file_path: str) -> Dict[str, pd.DataFrame]:
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"File {file_path} not found")
+
+        with open(file_path, "r") as file:
+            data = json.load(file)
+
+        merged_dict = {}
+        for item in data:
+            if item == "historicalPriceFull":
+                symbol = ""
+                for entry in data[item]:
+                    if "symbol" in entry:
+                        symbol = data[item][entry]
+                    else:
+                        df = pd.json_normalize(data[item][entry])
+                        df["symbol"] = symbol
+            else:
+                df = pd.json_normalize(data[item])
+            merged_dict[item] = df
+
+        return merged_dict
 
 
 class FeatureExtractor:
