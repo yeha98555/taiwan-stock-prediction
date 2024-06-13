@@ -16,6 +16,12 @@ class DataProcessor:
         df = df.sort_values(by="date", ascending=True).reset_index(drop=True)
         df.set_index("date", inplace=True)
 
+        # check all columns is numeric
+        for col in df.columns:
+            if col not in ["close"] and not np.issubdtype(df[col].dtype, np.number):
+                print(f"Column {col} is not numeric, it is {df[col].dtype}. Remove it")
+                df.drop(columns=[col], inplace=True)
+
         scaler = MinMaxScaler(feature_range=(-1, 1))
         df[df.columns] = scaler.fit_transform(df[df.columns])
         return df, scaler
@@ -81,13 +87,15 @@ class AirflowDataProcessor(DataProcessor):
 
 
 class FeatureExtractor:
-    def extract_features(self, df: pd.DataFrame) -> pd.DataFrame:
+    def extract_features(
+        self, df: pd.DataFrame, select_cols: list = None
+    ) -> pd.DataFrame:
         raise NotImplementedError
 
 
-class TechnicalIndicatorExtractor(FeatureExtractor):
+class DailyFeatureExtractor(FeatureExtractor):
     def extract_features(
-        self, data_dict: dict, is_add_techindex: bool = True, select_cols: list = None
+        self, data_dict: dict, select_cols: list = None, is_add_techindex: bool = True
     ) -> pd.DataFrame:
         stockprice_df = data_dict["stockprice"]
         # move close to the first column
@@ -121,12 +129,37 @@ class TechnicalIndicatorExtractor(FeatureExtractor):
         if "close" not in df.columns or "close" != df.columns[1]:
             raise ValueError("close must be the first column except date")
 
-        # check all columns is numeric
-        for col in df.columns:
-            if col not in ["date", "close"] and not np.issubdtype(
-                df[col].dtype, np.number
-            ):
-                print(f"Column {col} is not numeric, it is {df[col].dtype}. Remove it")
-                df.drop(columns=[col], inplace=True)
+        return df
+
+
+class QuarterFeatureExtractor(FeatureExtractor):
+    def extract_features(
+        self, data_dict: dict, select_cols: list = None
+    ) -> pd.DataFrame:
+        financial_df = data_dict["financial"]
+        if financial_df is None:
+            raise ValueError("financial data not found")
+
+        financial_df["date"] = pd.to_datetime(financial_df["date"])
+        financial_df["quarter"] = financial_df["date"].dt.to_period("Q")
+
+        stockprice_df = data_dict["stockprice"]
+        stockprice_df = stockprice_df[["date"]]
+        stockprice_df["date"] = pd.to_datetime(stockprice_df["date"])
+        stockprice_df["quarter"] = stockprice_df["date"].dt.to_period("Q")
+
+        df = pd.merge(
+            stockprice_df,
+            financial_df,
+            on="quarter",
+            how="left",
+            suffixes=("", "_financial"),
+        )
+
+        # drop unused columns
+        df.drop(columns=["quarter", "date_financial"], inplace=True)
+
+        # drop rows with missing values
+        df.dropna(inplace=True)
 
         return df

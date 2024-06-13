@@ -9,7 +9,11 @@ class Model:
     def train_model(
         self, X_train, y_train, num_epochs, learning_rate=0.01, weight_decay=0.0001
     ) -> np.array:
-        X_train = torch.from_numpy(X_train).type(torch.Tensor)
+        X_train = (
+            [torch.from_numpy(x).type(torch.Tensor) for x in X_train]
+            if isinstance(X_train, list)
+            else torch.from_numpy(X_train).type(torch.Tensor)
+        )
         y_train = torch.from_numpy(y_train).type(torch.Tensor)
 
         loss_fn = torch.nn.MSELoss(reduction="mean")
@@ -19,7 +23,11 @@ class Model:
 
         hist = np.zeros(num_epochs)
         for t in range(num_epochs):
-            y_train_pred = self.forward(X_train)
+            y_train_pred = (
+                self.forward(*X_train)
+                if isinstance(X_train, list)
+                else self.forward(X_train)
+            )
             loss = loss_fn(y_train_pred, y_train)
             if t % 10 == 0:
                 print("Epoch ", t, "MSE: ", loss.item())
@@ -33,16 +41,28 @@ class Model:
     def test_model(
         self, X_train, y_train, X_test, y_test, scaler
     ) -> Tuple[np.array, np.array]:
-        X_train = torch.from_numpy(X_train).type(torch.Tensor)
+        X_train = (
+            [torch.from_numpy(x).type(torch.Tensor) for x in X_train]
+            if isinstance(X_train, list)
+            else torch.from_numpy(X_train).type(torch.Tensor)
+        )
         y_train = torch.from_numpy(y_train).type(torch.Tensor)
-        X_test = torch.from_numpy(X_test).type(torch.Tensor)
+        X_test = (
+            [torch.from_numpy(x).type(torch.Tensor) for x in X_test]
+            if isinstance(X_test, list)
+            else torch.from_numpy(X_test).type(torch.Tensor)
+        )
         y_test = torch.from_numpy(y_test).type(torch.Tensor)
 
         self.eval()
-        train_predict = self.forward(X_train).detach().numpy()
-        test_predict = self.forward(X_test).detach().numpy()
+        train_predict = self.forward(*X_train).detach().numpy()
+        test_predict = self.forward(*X_test).detach().numpy()
 
-        concat_dim = X_train.shape[2] - 1
+        concat_dim = (
+            X_train[0].shape[2] - 1
+            if isinstance(X_train, list)
+            else X_train.shape[2] - 1
+        )
 
         # Reverse normalization for predictions
         train_predict_full = np.concatenate(
@@ -87,3 +107,59 @@ class LSTMModel(nn.Module, Model):
         out, (hn, cn) = self.lstm(x, (h0.detach(), c0.detach()))
         out = self.fc(out[:, -1, :])
         return out
+
+
+class HierarchicalLSTMModel(nn.Module, Model):
+    def __init__(
+        self,
+        input_dim,
+        hidden_dim,
+        num_layers,
+        output_dim,
+    ):
+        super(HierarchicalLSTMModel, self).__init__()
+        self.daily_features_dim = input_dim[0]
+        self.monthly_features_dim = input_dim[1]
+
+        # daily
+        self.daily_lstm1 = nn.LSTM(
+            self.daily_features_dim, hidden_dim, num_layers, batch_first=True
+        )
+        self.daily_dropout1 = nn.Dropout(0.2)
+        self.daily_lstm2 = nn.LSTM(hidden_dim, hidden_dim, num_layers, batch_first=True)
+        self.daily_dropout2 = nn.Dropout(0.2)
+
+        # month
+        self.monthly_lstm1 = nn.LSTM(
+            self.monthly_features_dim, hidden_dim, num_layers, batch_first=True
+        )
+        self.monthly_dropout1 = nn.Dropout(0.2)
+        self.monthly_lstm2 = nn.LSTM(
+            hidden_dim, hidden_dim, num_layers, batch_first=True
+        )
+        self.monthly_dropout2 = nn.Dropout(0.2)
+
+        self.combined_lstm = nn.LSTM(
+            hidden_dim * 2, hidden_dim, num_layers, batch_first=True
+        )
+        self.final_dense = nn.Linear(hidden_dim, output_dim)
+
+    def forward(self, daily_input, monthly_input):
+        # daily
+        daily_output, _ = self.daily_lstm1(daily_input)
+        daily_output = self.daily_dropout1(daily_output)
+        daily_output, _ = self.daily_lstm2(daily_output)
+        daily_output = self.daily_dropout2(daily_output)
+        # month
+        monthly_output, _ = self.monthly_lstm1(monthly_input)
+        monthly_output = self.monthly_dropout1(monthly_output)
+        monthly_output, _ = self.monthly_lstm2(monthly_output)
+        monthly_output = self.monthly_dropout2(monthly_output)
+
+        # concatenate
+        combined_output = torch.cat(
+            (daily_output[:, -1, :], monthly_output[:, -1, :]), dim=-1
+        )
+        combined_output, _ = self.combined_lstm(combined_output)
+        final_output = self.final_dense(combined_output)
+        return final_output

@@ -2,13 +2,14 @@ import os
 from datetime import datetime
 
 import torch
-from model import LSTMModel, Model
+from model import HierarchicalLSTMModel, LSTMModel, Model
 from preprocessing import (
     AirflowDataProcessor,
+    DailyFeatureExtractor,
     DataProcessor,
     FeatureExtractor,
+    QuarterFeatureExtractor,
     SRCDataProcessor,
-    TechnicalIndicatorExtractor,
 )
 from utils import Plotter
 
@@ -54,8 +55,10 @@ class ProcessorFactory:
 class FeatureExtractorFactory:
     @staticmethod
     def get_extractor(extractor_type: str) -> FeatureExtractor:
-        if extractor_type == "technical":
-            return TechnicalIndicatorExtractor()
+        if extractor_type == "daily":
+            return DailyFeatureExtractor()
+        elif extractor_type == "quarter":
+            return QuarterFeatureExtractor()
         else:
             raise ValueError(f"Unknown extractor type: {extractor_type}")
 
@@ -64,13 +67,15 @@ class ModelFactory:
     @staticmethod
     def get_model(
         model_type: str,
-        input_dim: int,
+        input_dim: int | list[int],
         hidden_dim: int,
         num_layers: int,
         output_dim: int,
     ) -> Model:
         if model_type == "lstm":
             return LSTMModel(input_dim, hidden_dim, num_layers, output_dim)
+        elif model_type == "hlstm":
+            return HierarchicalLSTMModel(input_dim, hidden_dim, num_layers, output_dim)
         else:
             raise ValueError(f"Unknown model type: {model_type}")
 
@@ -89,18 +94,28 @@ if __name__ == "__main__":
     # print(merged_dict.keys())
 
     # Feature extraction
-    feature_extractor = FeatureExtractorFactory.get_extractor("technical")
-    data_df = feature_extractor.extract_features(
+    daily_extractor = FeatureExtractorFactory.get_extractor("daily")
+    daily_df = daily_extractor.extract_features(
         merged_dict,
         is_add_techindex=is_add_techindex,  # , select_cols=select_cols
     )
+    quarter_extractor = FeatureExtractorFactory.get_extractor("quarter")
+    quarter_df = quarter_extractor.extract_features(
+        merged_dict  # , select_cols=select_cols
+    )
+    # trim daily_df to the same length as quarter_df
+    daily_df = daily_df[: len(quarter_df)]
 
     # Preprocess data
-    data, scaler = data_processor.preprocess_data(data_df)
+    daily_data, scaler = data_processor.preprocess_data(daily_df)
+    quarter_data, _ = data_processor.preprocess_data(quarter_df)
 
     # Split data
-    X_train, y_train, X_test, y_test = data_processor.split_data(
-        data, look_back=look_back, split_ratio=0.2
+    X_train_daily, y_train, X_test_daily, y_test = data_processor.split_data(
+        daily_data, look_back=look_back, split_ratio=0.2
+    )
+    X_train_quarter, _, X_test_quarter, _ = data_processor.split_data(
+        quarter_data, look_back=look_back, split_ratio=0.2
     )
 
     # print("X_train.shape", X_train.shape)
@@ -110,8 +125,8 @@ if __name__ == "__main__":
 
     # Initialize model
     model = ModelFactory.get_model(
-        "lstm",
-        input_dim=X_train.shape[2],
+        "hlstm",
+        input_dim=[X_train_daily.shape[2], X_train_quarter.shape[2]],
         hidden_dim=64,
         num_layers=2,
         output_dim=y_train.shape[1],
@@ -119,7 +134,9 @@ if __name__ == "__main__":
 
     if is_retrain or not len(os.listdir(model_folder)):
         # Train model
-        hist = model.train_model(X_train, y_train, num_epochs=num_epochs)
+        hist = model.train_model(
+            [X_train_daily, X_train_quarter], y_train, num_epochs=num_epochs
+        )
 
         # Plot loss
         Plotter.plot_loss(hist)
@@ -136,11 +153,15 @@ if __name__ == "__main__":
 
     # Calculate RMSE
     train_predict, test_predict = model.test_model(
-        X_train, y_train, X_test, y_test, scaler
+        [X_train_daily, X_train_quarter],
+        y_train,
+        [X_test_daily, X_test_quarter],
+        y_test,
+        scaler,
     )
 
     # Plot trends
-    train_data_len = len(X_train)
+    train_data_len = len(X_train_daily)
     Plotter.plot_trends(
-        data, scaler, train_predict, test_predict, train_data_len, look_back
+        daily_data, scaler, train_predict, test_predict, train_data_len, look_back
     )
