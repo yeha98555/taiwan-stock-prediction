@@ -11,18 +11,13 @@ class DataProcessor:
     def read_data(self, file_path: str) -> Dict[str, pd.DataFrame]:
         raise NotImplementedError
 
-    def preprocess_data(
-        self, df: pd.DataFrame, select_cols: list = ["close"]
-    ) -> Tuple[pd.DataFrame, MinMaxScaler]:
+    def preprocess_data(self, df: pd.DataFrame) -> Tuple[pd.DataFrame, MinMaxScaler]:
         df["date"] = pd.to_datetime(df["date"], format="%Y-%m-%d")
-        df = df[
-            ["date"] + select_cols
-        ]  # make sure close is the first column except date
         df = df.sort_values(by="date", ascending=True).reset_index(drop=True)
         df.set_index("date", inplace=True)
 
         scaler = MinMaxScaler(feature_range=(-1, 1))
-        df[select_cols] = scaler.fit_transform(df[select_cols])
+        df[df.columns] = scaler.fit_transform(df[df.columns])
         return df, scaler
 
     def split_data(
@@ -65,6 +60,13 @@ class SRCDataProcessor(DataProcessor):
                 df = pd.json_normalize(data[item])
             merged_dict[item] = df
 
+        # rename
+        merged_dict = {
+            "stockprice": merged_dict["historicalPriceFull"],
+            "techindex": merged_dict["tech60"],
+            "financial": None,
+        }
+
         return merged_dict
 
 
@@ -74,5 +76,47 @@ class FeatureExtractor:
 
 
 class TechnicalIndicatorExtractor(FeatureExtractor):
-    def extract_features(self, df: pd.DataFrame) -> pd.DataFrame:
+    def extract_features(
+        self, data_dict: dict, is_add_techindex: bool = True, select_cols: list = None
+    ) -> pd.DataFrame:
+        stockprice_df = data_dict["stockprice"]
+        # move close to the first column
+        cols = stockprice_df.columns.tolist()
+        cols.remove("close")
+        cols.insert(1, "close")
+        stockprice_df = stockprice_df[cols]
+
+        if is_add_techindex:
+            techindex_df = data_dict["techindex"]
+
+            stockprice_df["date"] = pd.to_datetime(stockprice_df["date"])
+            techindex_df["date"] = pd.to_datetime(techindex_df["date"])
+
+            df = stockprice_df.merge(
+                techindex_df,
+                on="date",
+                how="left",
+                suffixes=("", "_techindex"),
+            )
+
+        # Get selected columns
+        if select_cols is not None:
+            # check all selected columns exist
+            for col in select_cols:
+                if col not in df.columns:
+                    raise ValueError(f"Column {col} not found")
+            df = df[["date"] + select_cols]
+
+        # check if close is the first column except date
+        if "close" not in df.columns or "close" != df.columns[1]:
+            raise ValueError("close must be the first column except date")
+
+        # check all columns is numeric
+        for col in df.columns:
+            if col not in ["date", "close"] and not np.issubdtype(
+                df[col].dtype, np.number
+            ):
+                print(f"Column {col} is not numeric, it is {df[col].dtype}. Remove it")
+                df.drop(columns=[col], inplace=True)
+
         return df

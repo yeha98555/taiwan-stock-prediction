@@ -1,7 +1,6 @@
 import os
 from datetime import datetime
 
-import pandas as pd
 import torch
 from model import LSTMModel, Model
 from preprocessing import (
@@ -18,6 +17,26 @@ model_folder = "./model"
 is_retrain = True
 num_epochs = 1000
 is_add_techindex = True
+select_cols = [
+    "close",  # make sure close is the first column except date
+    "open",
+    "high",
+    "low",
+    "volume",
+    "vwap",
+]
+if is_add_techindex:
+    select_cols.extend(
+        [
+            "close_tech60",
+            "volume_tech60",
+            "sma",
+            "wma",
+            "rsi",
+            "adx",
+            "standardDeviation",
+        ]
+    )
 
 
 class ProcessorFactory:
@@ -66,50 +85,15 @@ if __name__ == "__main__":
     merged_dict = data_processor.read_data("../data/output_clean_date_technical.json")
     print(merged_dict.keys())
 
-    # Get selected df
-    stockprice_df = merged_dict["historicalPriceFull"]
-    if is_add_techindex:
-        techindex_df = merged_dict["tech60"]
-
-        stockprice_df["date"] = pd.to_datetime(stockprice_df["date"])
-        techindex_df["date"] = pd.to_datetime(techindex_df["date"])
-
-        stockprice_df = stockprice_df.merge(
-            techindex_df,
-            on="date",
-            how="left",
-            suffixes=("", "_tech60"),
-        )
-
     # Feature extraction
     feature_extractor = FeatureExtractorFactory.get_extractor("technical")
-    stockprice_df = feature_extractor.extract_features(stockprice_df)
-
-    # Feature scaling
-    select_cols = [
-        "open",
-        "high",
-        "low",
-        "close",
-        "volume",
-        "vwap",
-    ]
-    if is_add_techindex:
-        select_cols.extend(
-            [
-                "close_tech60",
-                "volume_tech60",
-                "sma",
-                "wma",
-                "rsi",
-                "adx",
-                "standardDeviation",
-            ]
-        )
-    data, scaler = data_processor.preprocess_data(
-        stockprice_df,
-        select_cols=select_cols,
+    data_df = feature_extractor.extract_features(
+        merged_dict,
+        is_add_techindex=is_add_techindex,  # , select_cols=select_cols
     )
+
+    # Preprocess data
+    data, scaler = data_processor.preprocess_data(data_df)
 
     # Split data
     X_train, y_train, X_test, y_test = data_processor.split_data(
