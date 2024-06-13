@@ -97,7 +97,6 @@ def d_stock_src_to_dim():
 
     @task
     def etl_create_dim_techindex_table():
-        # select columns
         query = f"""
         CREATE OR REPLACE TABLE `{DATASET_PREFIX}dim.techIndex` AS
         SELECT
