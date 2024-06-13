@@ -1,6 +1,7 @@
 import os
 from datetime import datetime
 
+import pandas as pd
 import torch
 from model import LSTMModel, Model
 from preprocessing import (
@@ -16,6 +17,7 @@ model_name = "single"
 model_folder = "./model"
 is_retrain = True
 num_epochs = 1000
+is_add_financial = True
 
 
 class ProcessorFactory:
@@ -64,26 +66,50 @@ if __name__ == "__main__":
     merged_dict = data_processor.read_data("../data/output_clean_date_technical.json")
     print(merged_dict.keys())
 
-    # Get stock historical price
+    # Get selected df
     historical_df = merged_dict["historicalPriceFull"]
+    if is_add_financial:
+        financial_df = merged_dict["tech60"]
+
+        historical_df["date"] = pd.to_datetime(historical_df["date"])
+        financial_df["date"] = pd.to_datetime(financial_df["date"])
+
+        historical_df = historical_df.merge(
+            financial_df,
+            on="date",
+            how="left",
+            suffixes=("", "_tech60"),
+        )
+        print(historical_df.tail())
 
     # Feature extraction
     feature_extractor = FeatureExtractorFactory.get_extractor("technical")
     historical_df = feature_extractor.extract_features(historical_df)
 
     # Feature scaling
+    select_cols = [
+        "close",
+        "volume",
+        "open",
+        "high",
+        "low",
+        "adjClose",  # 考慮分紅或拆股，調整後的，對於長期預測有價值
+        "changeOverTime",  # 隨時間價格變化，識別長期趨勢和週期性的變化
+    ]
+    if is_add_financial:
+        select_cols.extend(
+            [
+                "close_tech60",
+                "volume_tech60",
+                "wma",
+                "rsi",
+                "adx",
+                "standardDeviation",
+            ]
+        )
     data, scaler = data_processor.preprocess_data(
         historical_df,
-        select_cols=[
-            "close",
-            "volume",
-            "open",
-            "high",
-            "low",
-            "adjClose",  # 考慮分紅或拆股，調整後的，對於長期預測有價值
-            "change",  # 反應市場的波動性，識別短期趨勢
-            "changeOverTime",  # 隨時間價格變化，識別長期趨勢和週期性的變化
-        ],
+        select_cols=select_cols,
     )
 
     # Split data
