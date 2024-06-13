@@ -75,6 +75,4 @@ class FeatureExtractor:
 
 class TechnicalIndicatorExtractor(FeatureExtractor):
     def extract_features(self, df: pd.DataFrame) -> pd.DataFrame:
-        # Example: Add moving average as a feature
-        df["sma"] = df["close"].rolling(window=20).mean()
         return df
