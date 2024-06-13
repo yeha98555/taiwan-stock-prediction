@@ -126,6 +126,7 @@ def d_stock_src_to_dim():
             low,
             close,
             volume,
+            vwap,
         FROM `{DATASET_PREFIX}ods.historicalPriceFull`
         """
         query_bq(BQ_CLIENT, query)
