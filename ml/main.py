@@ -4,6 +4,7 @@ from datetime import datetime
 import torch
 from model import LSTMModel, Model
 from preprocessing import (
+    AirflowDataProcessor,
     DataProcessor,
     FeatureExtractor,
     SRCDataProcessor,
@@ -44,6 +45,8 @@ class ProcessorFactory:
     def get_processor(processor_type: str) -> DataProcessor:
         if processor_type == "src":  # Use original data for development
             return SRCDataProcessor()
+        elif processor_type == "airflow":
+            return AirflowDataProcessor()
         else:
             raise ValueError(f"Unknown processor type: {processor_type}")
 
@@ -81,9 +84,9 @@ if __name__ == "__main__":
     setup()
 
     # Read data
-    data_processor = ProcessorFactory.get_processor("src")
-    merged_dict = data_processor.read_data("../data/output_clean_date_technical.json")
-    print(merged_dict.keys())
+    data_processor = ProcessorFactory.get_processor("airflow")
+    merged_dict = data_processor.read_data("../airflow/data")
+    # print(merged_dict.keys())
 
     # Feature extraction
     feature_extractor = FeatureExtractorFactory.get_extractor("technical")

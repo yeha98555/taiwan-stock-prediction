@@ -70,6 +70,16 @@ class SRCDataProcessor(DataProcessor):
         return merged_dict
 
 
+class AirflowDataProcessor(DataProcessor):
+    def read_data(self, file_path: str) -> Dict[str, pd.DataFrame]:
+        merged_dict = {}
+        for file in os.listdir(file_path):
+            if file.endswith(".csv"):
+                df = pd.read_csv(os.path.join(file_path, file))
+                merged_dict[file.split(".")[0].split("_")[-1]] = df
+        return merged_dict
+
+
 class FeatureExtractor:
     def extract_features(self, df: pd.DataFrame) -> pd.DataFrame:
         raise NotImplementedError
