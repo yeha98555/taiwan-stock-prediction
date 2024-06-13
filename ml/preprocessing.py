@@ -18,21 +18,30 @@ class DataProcessor:
 
         # check all columns is numeric
         for col in df.columns:
-            if col not in ["close"] and not np.issubdtype(df[col].dtype, np.number):
+            if col not in ["close", "symbol"] and not np.issubdtype(
+                df[col].dtype, np.number
+            ):
                 print(f"Column {col} is not numeric, it is {df[col].dtype}. Remove it")
                 df.drop(columns=[col], inplace=True)
 
+        # scale all columns except symbol
         scaler = MinMaxScaler(feature_range=(-1, 1))
-        df[df.columns] = scaler.fit_transform(df[df.columns])
+        selected_cols = list(df.columns)
+        selected_cols.remove("symbol")
+        df[selected_cols] = scaler.fit_transform(df[selected_cols])
         return df, scaler
 
     def split_data(
         self, stock: pd.DataFrame, look_back: int, split_ratio: float
     ) -> List[np.array]:
-        data_raw = stock.values
         data = []
-        for index in range(len(data_raw) - look_back):
-            data.append(data_raw[index : index + look_back])
+
+        grouped = stock.groupby("symbol")
+        for _, group in grouped:
+            group.drop(columns=["symbol"], inplace=True)
+            data_raw = group.values
+            for index in range(len(data_raw) - look_back):
+                data.append(data_raw[index : index + look_back])
         data = np.array(data)
 
         test_set_size = int(np.round(split_ratio * data.shape[0]))
