@@ -14,7 +14,7 @@ from preprocessing import (
 from utils import Plotter
 
 look_back = 90
-model_name = "single"
+model_type = "hlstm"
 model_folder = "./model"
 is_retrain = True
 num_epochs = 1000
@@ -125,7 +125,7 @@ if __name__ == "__main__":
 
     # Initialize model
     model = ModelFactory.get_model(
-        "hlstm",
+        model_type,
         input_dim=[X_train_daily.shape[2], X_train_quarter.shape[2]],
         hidden_dim=64,
         num_layers=2,
@@ -144,11 +144,11 @@ if __name__ == "__main__":
         # Save model
         torch.save(
             model,
-            f"{model_folder}/{model_name}_{datetime.now().strftime('%Y-%m-%d')}.pth",
+            f"{model_folder}/{model_type}_{datetime.now().strftime('%Y-%m-%d')}.pth",
         )
     else:
         model = torch.load(
-            f"{model_folder}/{model_name}_{datetime.now().strftime('%Y-%m-%d')}.pth"
+            f"{model_folder}/{model_type}_{datetime.now().strftime('%Y-%m-%d')}.pth"
         )
 
     # Calculate RMSE
