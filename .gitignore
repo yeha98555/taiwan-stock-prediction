@@ -5,6 +5,7 @@ mlflow/
 results/
 workspaces/
 efs/
+data/
 
 # VSCode
 .vscode/
@@ -109,3 +110,6 @@ site/
 
 # key file
 *_key*.json
+
+# model checkpoint
+*.pth
