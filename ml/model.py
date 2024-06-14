@@ -119,7 +119,7 @@ class HierarchicalLSTMModel(nn.Module, Model):
     ):
         super(HierarchicalLSTMModel, self).__init__()
         self.daily_features_dim = input_dim[0]
-        self.monthly_features_dim = input_dim[1]
+        self.quarterly_features_dim = input_dim[1]
 
         # daily
         self.daily_lstm1 = nn.LSTM(
@@ -129,15 +129,15 @@ class HierarchicalLSTMModel(nn.Module, Model):
         self.daily_lstm2 = nn.LSTM(hidden_dim, hidden_dim, num_layers, batch_first=True)
         self.daily_dropout2 = nn.Dropout(0.2)
 
-        # month
-        self.monthly_lstm1 = nn.LSTM(
-            self.monthly_features_dim, hidden_dim, num_layers, batch_first=True
+        # quarter
+        self.quarterly_lstm1 = nn.LSTM(
+            self.quarterly_features_dim, hidden_dim, num_layers, batch_first=True
         )
-        self.monthly_dropout1 = nn.Dropout(0.2)
-        self.monthly_lstm2 = nn.LSTM(
+        self.quarterly_dropout1 = nn.Dropout(0.2)
+        self.quarterly_lstm2 = nn.LSTM(
             hidden_dim, hidden_dim, num_layers, batch_first=True
         )
-        self.monthly_dropout2 = nn.Dropout(0.2)
+        self.quarterly_dropout2 = nn.Dropout(0.2)
 
         self.combined_lstm = nn.LSTM(
             hidden_dim * 2, hidden_dim, num_layers, batch_first=True
@@ -146,21 +146,21 @@ class HierarchicalLSTMModel(nn.Module, Model):
         self.final_dense = nn.Linear(hidden_dim, output_dim)
         self.final_activation = nn.Sigmoid()
 
-    def forward(self, daily_input, monthly_input):
+    def forward(self, daily_input, quarterly_input):
         # daily
         daily_output, _ = self.daily_lstm1(daily_input)
         daily_output = self.daily_dropout1(daily_output)
         daily_output, _ = self.daily_lstm2(daily_output)
         daily_output = self.daily_dropout2(daily_output)
-        # month
-        monthly_output, _ = self.monthly_lstm1(monthly_input)
-        monthly_output = self.monthly_dropout1(monthly_output)
-        monthly_output, _ = self.monthly_lstm2(monthly_output)
-        monthly_output = self.monthly_dropout2(monthly_output)
+        # quarter
+        quarterly_output, _ = self.quarterly_lstm1(quarterly_input)
+        quarterly_output = self.quarterly_dropout1(quarterly_output)
+        quarterly_output, _ = self.quarterly_lstm2(quarterly_output)
+        quarterly_output = self.quarterly_dropout2(quarterly_output)
 
         # concatenate
         combined_output = torch.cat(
-            (daily_output[:, -1, :], monthly_output[:, -1, :]), dim=-1
+            (daily_output[:, -1, :], quarterly_output[:, -1, :]), dim=-1
         )
         combined_output, _ = self.combined_lstm(combined_output.unsqueeze(1))
         combined_output = combined_output[:, -1, :]
