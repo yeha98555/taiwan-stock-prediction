@@ -151,7 +151,7 @@ if __name__ == "__main__":
             f"{model_folder}/{model_type}_{datetime.now().strftime('%Y-%m-%d')}.pth"
         )
 
-    # Calculate RMSE
+    # Test model
     train_predict, test_predict = model.test_model(
         [X_train_daily, X_train_quarter],
         y_train,
