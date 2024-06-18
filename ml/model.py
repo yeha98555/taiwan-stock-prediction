@@ -73,7 +73,7 @@ class Model:
         print(f"Test F1: {test_f1}")
 
         # confusion matrix
-        cm = confusion_matrix(y_test, test_predict)
+        cm = confusion_matrix(y_test, test_predict, normalize="all")
         cm_df = pd.DataFrame(
             cm,
             index=["True Negative", "True Positive"],
