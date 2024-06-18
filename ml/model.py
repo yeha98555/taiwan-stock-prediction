@@ -101,9 +101,7 @@ class LSTMModel(nn.Module, Model):
         self.activation = nn.Sigmoid()
 
     def forward(self, x):
-        h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_dim).requires_grad_()
-        c0 = torch.zeros(self.num_layers, x.size(0), self.hidden_dim).requires_grad_()
-        out, (hn, cn) = self.lstm(x, (h0.detach(), c0.detach()))
+        out, (_, _) = self.lstm(x)
         out = self.fc(out[:, -1, :])
         out = self.activation(out)
         return out
